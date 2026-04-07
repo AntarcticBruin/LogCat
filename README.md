@@ -30,7 +30,7 @@
 
 1.  **克隆仓库**
     ```bash
-    git clone https://github.com/your-username/log-cat.git
+    git clone https://github.com/AntarcticBruin/LogCat.git
     cd log-cat
     ```
 
