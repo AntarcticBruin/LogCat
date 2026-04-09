@@ -4,7 +4,7 @@
 ![image-20260409112653709](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260409_1775705214.png)
 ![ScreenShot_2026-04-07_132432_344](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260407_1775539689.png)
 
-**LogCat** 是一款基于 [Tauri 2.0](https://v2.tauri.app/) 和 [Rust](https://www.rust-lang.org/) 构建的高性能、跨平台远程 SSH 日志查看器与文件浏览器。
+**LogCat** 是一款基于 [Tauri 2.0](https://v2.tauri.app/) 和 [Rust](https://www.rust-lang.org/) 构建的高性能、跨平台远程 SSH 终端、日志查看器与文件浏览器。
 
 它旨在解决开发者在查看大型远程服务器日志时的痛点：延迟高、大文件卡顿、以及对现代 SSH 密钥格式支持不佳。
 
@@ -13,6 +13,7 @@
 -   **全异步 Rust 后端**：基于 `russh` 纯 Rust SSH 协议栈实现，原生支持 `ed25519` 密钥。
 -   **极速日志流**：采用智能 Batching 机制，在高频日志滚动时自动压缩 IPC 通信频率，CPU 占用极低。
 -   **智能高亮**：内置高性能正则分段算法（O(1) 内存分配），支持百万级日志行实时高亮。
+-   **内置 SSH 终端**：原生支持全功能 SSH 交互式终端（基于 xterm.js），无需切换窗口即可在应用内完成服务器命令行操作。
 -   **秒级目录跳转**：引入 SWR (Stale-While-Revalidate) 缓存策略，瞬间切换远程文件夹。
 -   **现代化 UI**：使用 Vue 3 + TypeScript 构建，拥有类似 VS Code 的侧边栏布局，支持自动滚动与日志上限管理（默认 5000 行）。
 -   **零依赖**：在 Windows 上无需安装 OpenSSH 客户端或任何 C++ 运行库。
@@ -51,7 +52,7 @@
 
 ## 🛠 技术栈
 
--   **Frontend**: Vue 3, Vite, TypeScript
+-   **Frontend**: Vue 3, Vite, TypeScript, xterm.js
 -   **Backend**: Rust, Tauri 2.0
 -   **SSH & SFTP**: [russh](https://github.com/warp-tech/russh), [russh-sftp](https://github.com/warp-tech/russh-sftp)
 -   **Runtime**: Tokio (Async Runtime)
