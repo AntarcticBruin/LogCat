@@ -3,9 +3,9 @@ import App from "./App.vue";
 import { invoke } from "@tauri-apps/api/core";
 
 // Disable default right-click context menu
-// document.addEventListener("contextmenu", (event) => {
-//   event.preventDefault();
-// });
+document.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+});
 
 createApp(App).mount("#app");
 invoke("show_main_window")
