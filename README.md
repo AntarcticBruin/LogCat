@@ -1,7 +1,7 @@
 # LogCat 🐾
 
 ![ScreenShot_2026-04-07_132206_976](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260407_1775539676.png)
-
+![image-20260409112653709](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260409_1775705214.png)
 ![ScreenShot_2026-04-07_132432_344](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260407_1775539689.png)
 
 **LogCat** 是一款基于 [Tauri 2.0](https://v2.tauri.app/) 和 [Rust](https://www.rust-lang.org/) 构建的高性能、跨平台远程 SSH 日志查看器与文件浏览器。
