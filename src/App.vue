@@ -51,6 +51,7 @@ const {
   startTail,
   stopTail,
   writeTerminal,
+  cdInTerminal,
   resizeTerminal,
   up,
   isFavorite,
@@ -117,6 +118,7 @@ const {
           @stop="stopTail"
           @start="startTail"
           @write-terminal="writeTerminal"
+          @cd-terminal="cdInTerminal"
           @resize-terminal="resizeTerminal"
         />
       </main>

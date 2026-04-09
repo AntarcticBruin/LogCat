@@ -89,10 +89,12 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
 .file-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
 .favorite-toggle { margin-left: 0; opacity: 0; color: #747474; }
 .download-btn { margin-left: 4px; opacity: 0; color: #747474; }
-.file-item:hover .favorite-toggle, .favorite-toggle.active, .favorite-item .favorite-toggle, .file-item:hover .download-btn { opacity: 1; }
+.terminal-btn { margin-left: 4px; opacity: 0; color: #747474; }
+.file-item:hover .favorite-toggle, .favorite-toggle.active, .favorite-item .favorite-toggle, .file-item:hover .download-btn, .file-item:hover .terminal-btn { opacity: 1; }
 .favorite-toggle.active { color: #f3c969; }
 .favorite-toggle:hover { color: #ffd977; }
 .download-btn:hover { color: #79c0ff; }
+.terminal-btn:hover { color: #79c0ff; }
 .favorites-panel { display: flex; flex-direction: column; flex: 1; min-height: 0; }
 .favorites-panel-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 16px 8px; color: #d3d3d3; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
 .favorites-count { color: var(--text-muted); font-size: 10px; }

@@ -38,6 +38,7 @@ const emit = defineEmits<{
   (event: "stop"): void;
   (event: "start"): void;
   (event: "write-terminal", data: string): void;
+  (event: "cd-terminal", path: string): void;
   (event: "resize-terminal", cols: number, rows: number): void;
 }>();
 </script>
@@ -63,6 +64,7 @@ const emit = defineEmits<{
       @open-favorite="emit('open-favorite', $event)"
       @toggle-favorite="emit('toggle-favorite', $event)"
       @download-file="emit('download-file', $event)"
+      @cd-terminal="emit('cd-terminal', $event)"
     />
 
     <LogViewer

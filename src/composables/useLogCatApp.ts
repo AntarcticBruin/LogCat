@@ -101,6 +101,7 @@ export function useLogCatApp() {
   let unlistenDragDrop: (() => void) | null = null;
   let unlistenTransferProgress: (() => void) | null = null;
   let isStartingTerminal = false;
+  let ignoreNextPromptLine = false;
 
   function visibleEntries(list: DirEntry[]) {
     return list;
@@ -208,6 +209,14 @@ export function useLogCatApp() {
   }
 
   function appendTerminalChunk(chunk: string) {
+    if (ignoreNextPromptLine) {
+      if (chunk.includes('\r\n') || chunk.includes('\n')) {
+        ignoreNextPromptLine = false;
+        // Optional: filter out the cd command from the chunk if needed,
+        // but for simplicity, we might just need to rely on clearing the line 
+        // using ANSI escape codes in the cd command itself.
+      }
+    }
     terminalContent.value += chunk;
   }
 
@@ -587,6 +596,16 @@ export function useLogCatApp() {
     }
   }
 
+  async function cdInTerminal(path: string) {
+    if (!sessionId.value || !terminalToken.value) return;
+    
+    await closeSelectedFile();
+    const escapedPath = path.replace(/'/g, "'\\''");
+    
+    // We send a space first to try and bypass history in bash/zsh (if HISTCONTROL=ignorespace)
+    await writeTerminal(` cd '${escapedPath}'\n`);
+  }
+
   async function resizeTerminal(cols: number, rows: number) {
     if (!sessionId.value || !terminalToken.value) return;
 
@@ -829,6 +848,7 @@ export function useLogCatApp() {
     startTerminal,
     stopTerminal,
     writeTerminal,
+    cdInTerminal,
     resizeTerminal,
     up,
     isFavorite,

@@ -23,6 +23,7 @@ const emit = defineEmits<{
   (event: "open-favorite", item: FavoriteItem): void;
   (event: "toggle-favorite", entry: DirEntry): void;
   (event: "download-file", entry: DirEntry): void;
+  (event: "cd-terminal", path: string): void;
 }>();
 
 const asFavoriteEntry = (item: FavoriteItem): DirEntry => ({
@@ -66,7 +67,7 @@ const isDraggingOver = defineModel<boolean>("isDraggingOver", { default: false }
       :class="{ 'dragging-over': isDraggingOver }"
     >
       <div class="path-bar">
-        <button class="icon-btn" @click="emit('up')">
+        <button class="icon-btn" @click="emit('up')" title="Up one level">
           <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -77,6 +78,12 @@ const isDraggingOver = defineModel<boolean>("isDraggingOver", { default: false }
           @input="emit('update:currentPath', ($event.target as HTMLInputElement).value)"
           @keyup.enter="emit('refresh')"
         />
+        <button class="icon-btn" title="Open in Terminal" @click="emit('cd-terminal', currentPath)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="4 17 10 11 4 5"></polyline>
+            <line x1="12" y1="19" x2="20" y2="19"></line>
+          </svg>
+        </button>
       </div>
 
       <div v-if="showFavorites" class="favorites-panel">
@@ -144,6 +151,18 @@ const isDraggingOver = defineModel<boolean>("isDraggingOver", { default: false }
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
               <polyline points="7 10 12 15 17 10"></polyline>
               <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+          </button>
+
+          <button
+            v-if="entry.kind === 'dir'"
+            class="icon-btn terminal-btn"
+            title="Open in Terminal"
+            @click.stop="emit('cd-terminal', entry.path)"
+          >
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="4 17 10 11 4 5"></polyline>
+              <line x1="12" y1="19" x2="20" y2="19"></line>
             </svg>
           </button>
 
