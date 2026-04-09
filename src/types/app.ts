@@ -60,6 +60,13 @@ export type TerminalEvent = {
   chunk: string;
 };
 
+export type TransferProgressEvent = {
+  session_id: string;
+  file_name: string;
+  transferred: number;
+  total: number;
+};
+
 export type HighlightTone =
   | "default"
   | "error"

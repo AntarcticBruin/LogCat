@@ -124,3 +124,31 @@ pub async fn resize_terminal(
         .await
         .map_err(|error| error.to_string())
 }
+
+#[tauri::command]
+pub async fn upload_file(
+    app: tauri::AppHandle,
+    _state: State<'_, AppState>,
+    session_id: String,
+    local_path: String,
+    remote_path: String,
+) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    files::upload_file(state.inner(), app.clone(), session_id, local_path, remote_path)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[tauri::command]
+pub async fn download_file(
+    app: tauri::AppHandle,
+    _state: State<'_, AppState>,
+    session_id: String,
+    remote_path: String,
+    local_path: String,
+) -> Result<(), String> {
+    let state = app.state::<AppState>();
+    files::download_file(state.inner(), app.clone(), session_id, remote_path, local_path)
+        .await
+        .map_err(|error| error.to_string())
+}

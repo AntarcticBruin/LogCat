@@ -4,10 +4,10 @@ use super::parsing::{
 };
 use super::session::get_conn;
 use super::state::AppState;
-use super::types::{DirEntry, EntryKind};
+use super::types::{DirEntry, EntryKind, TransferProgressEvent};
 use russh_sftp::client::SftpSession;
-use std::path::PathBuf;
-use tokio::io::AsyncReadExt;
+use tauri::{AppHandle, Emitter};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 const MAX_PROBED_FILES_PER_DIR: usize = 8;
 const MAX_PROBED_FILE_SIZE: u64 = 64 * 1024;
@@ -119,4 +119,118 @@ pub async fn list_directory(
 
     sort_entries(&mut items);
     Ok(items)
+}
+
+pub async fn upload_file(
+    state: &AppState,
+    app: AppHandle,
+    session_id: String,
+    local_path: String,
+    remote_path: String,
+) -> AppResult<()> {
+    let conn = get_conn(state, &session_id)?;
+
+    let mut handle = conn.handle.lock().await;
+    let channel = handle.channel_open_session().await?;
+    channel.request_subsystem(true, "sftp").await?;
+    let sftp = SftpSession::new(channel.into_stream()).await?;
+    drop(handle);
+
+    let mut local_file = tokio::fs::File::open(&local_path).await?;
+    let file_meta = local_file.metadata().await?;
+    let total_size = file_meta.len();
+    
+    let mut remote_file = sftp.create(remote_path).await?;
+
+    let file_name = std::path::Path::new(&local_path)
+        .file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string();
+
+    let mut buffer = vec![0; 512 * 1024];
+    let mut transferred = 0u64;
+    let mut last_emitted = 0u64;
+
+    loop {
+        let n = local_file.read(&mut buffer).await?;
+        if n == 0 {
+            break;
+        }
+        
+        remote_file.write_all(&buffer[..n]).await?;
+        transferred += n as u64;
+
+        // emit progress every 1% or if finished
+        if transferred == total_size || transferred - last_emitted >= (total_size / 100).max(1024 * 1024) {
+            let _ = app.emit("transfer_progress", TransferProgressEvent {
+                session_id: session_id.clone(),
+                file_name: file_name.clone(),
+                transferred,
+                total: total_size,
+            });
+            last_emitted = transferred;
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn download_file(
+    state: &AppState,
+    app: AppHandle,
+    session_id: String,
+    remote_path: String,
+    local_path: String,
+) -> AppResult<()> {
+    let conn = get_conn(state, &session_id)?;
+
+    let mut handle = conn.handle.lock().await;
+    let channel = handle.channel_open_session().await?;
+    channel.request_subsystem(true, "sftp").await?;
+    let sftp = SftpSession::new(channel.into_stream()).await?;
+    drop(handle);
+
+    let mut remote_file = sftp.open(&remote_path).await?;
+    let file_meta = remote_file.metadata().await?;
+    let total_size = file_meta.size.unwrap_or(0);
+    
+    let mut local_file = tokio::fs::File::create(&local_path).await?;
+
+    let file_name = remote_path.rsplit('/').next().unwrap_or(&remote_path).to_string();
+
+    let mut buffer = vec![0; 512 * 1024];
+    let mut transferred = 0u64;
+    let mut last_emitted = 0u64;
+
+    loop {
+        let n = remote_file.read(&mut buffer).await?;
+        if n == 0 {
+            break;
+        }
+        
+        local_file.write_all(&buffer[..n]).await?;
+        transferred += n as u64;
+
+        if total_size > 0 && (transferred == total_size || transferred - last_emitted >= (total_size / 100).max(1024 * 1024)) {
+            let _ = app.emit("transfer_progress", TransferProgressEvent {
+                session_id: session_id.clone(),
+                file_name: file_name.clone(),
+                transferred,
+                total: total_size,
+            });
+            last_emitted = transferred;
+        } else if total_size == 0 && transferred - last_emitted >= 1024 * 1024 {
+            // If total size is unknown, emit every 1MB
+             let _ = app.emit("transfer_progress", TransferProgressEvent {
+                session_id: session_id.clone(),
+                file_name: file_name.clone(),
+                transferred,
+                total: 0,
+            });
+            last_emitted = transferred;
+        }
+    }
+
+    Ok(())
 }

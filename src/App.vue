@@ -60,6 +60,9 @@ const {
   clearError,
   clearContent,
   pickPrivateKeyPath,
+  isDraggingOverSidebar,
+  downloadFile,
+  transferProgress,
 } = useLogCatApp();
 </script>
 
@@ -90,6 +93,7 @@ const {
           v-model:is-auto-scroll="isAutoScroll"
           v-model:log-viewer-ref="logViewer"
           v-model:terminal-viewer-ref="terminalViewer"
+          v-model:is-dragging-over-sidebar="isDraggingOverSidebar"
           :session-id="sessionId"
           :show-favorites="showFavorites"
           :entries="entries"
@@ -99,6 +103,7 @@ const {
           :terminal-token="terminalToken"
           :highlighted-lines="highlightedLines"
           :is-favorite="isFavorite"
+          :transfer-progress="transferProgress"
           @toggle-favorites="toggleFavoritesPanel"
           @disconnect="disconnect"
           @select-hosts-tab="activeTab = 'hosts'"
@@ -107,6 +112,7 @@ const {
           @open-entry="enter"
           @open-favorite="openFavorite"
           @toggle-favorite="toggleFavorite"
+          @download-file="downloadFile"
           @clear="clearContent"
           @stop="stopTail"
           @start="startTail"

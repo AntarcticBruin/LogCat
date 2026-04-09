@@ -56,3 +56,11 @@ pub struct TerminalEvent {
     pub session_id: String,
     pub chunk: String,
 }
+
+#[derive(Serialize, Clone)]
+pub struct TransferProgressEvent {
+    pub session_id: String,
+    pub file_name: String,
+    pub transferred: u64,
+    pub total: u64,
+}

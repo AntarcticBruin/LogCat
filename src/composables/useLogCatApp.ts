@@ -2,7 +2,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { open } from "@tauri-apps/plugin-dialog";
+import { open, save } from "@tauri-apps/plugin-dialog";
 import type {
   AppTab,
   ConnectOptions,
@@ -12,6 +12,7 @@ import type {
   HostProfile,
   TailEvent,
   TerminalEvent,
+  TransferProgressEvent,
 } from "../types/app";
 import { highlightLogLine } from "../utils/logHighlight";
 
@@ -67,6 +68,12 @@ export function useLogCatApp() {
   const logViewer = ref<HTMLElement | null>(null);
   const terminalViewer = ref<HTMLElement | null>(null);
   const isAutoScroll = ref(true);
+  
+  const transferProgress = ref<{
+    fileName: string;
+    transferred: number;
+    total: number;
+  } | null>(null);
   const favoritePaths = computed(() => {
     const paths = new Set<string>();
     const hostId = currentConnectedHostId.value;
@@ -91,10 +98,12 @@ export function useLogCatApp() {
 
   let unlistenTail: (() => void) | null = null;
   let unlistenTerminal: (() => void) | null = null;
+  let unlistenDragDrop: (() => void) | null = null;
+  let unlistenTransferProgress: (() => void) | null = null;
   let isStartingTerminal = false;
 
   function visibleEntries(list: DirEntry[]) {
-    return list.filter((entry) => entry.kind === "dir" || (entry.kind === "file" && entry.is_text));
+    return list;
   }
 
   function directoryCacheKey(targetSessionId: string, path: string) {
@@ -115,6 +124,8 @@ export function useLogCatApp() {
     entries.value = [];
   }
 
+  const isDraggingOverSidebar = ref(false);
+
   onMounted(() => {
     const storedHosts = localStorage.getItem("logcat_hosts");
     if (storedHosts) {
@@ -125,6 +136,21 @@ export function useLogCatApp() {
     if (storedFavorites) {
       favorites.value = JSON.parse(storedFavorites) as FavoriteItem[];
     }
+
+    appWindow.onDragDropEvent((event) => {
+      if (event.payload.type === "enter" || event.payload.type === "over") {
+        isDraggingOverSidebar.value = true;
+      } else if (event.payload.type === "drop") {
+        if (sessionId.value) {
+          void uploadFiles(event.payload.paths);
+        }
+        isDraggingOverSidebar.value = false;
+      } else if (event.payload.type === "leave") {
+        isDraggingOverSidebar.value = false;
+      }
+    }).then((unlisten) => {
+      unlistenDragDrop = unlisten;
+    });
   });
 
   watch(
@@ -307,6 +333,7 @@ export function useLogCatApp() {
       clearDirectoryState();
       await ensureTailListener();
       await ensureTerminalListener();
+      await ensureTransferProgressListener();
       await startTerminal();
       await refresh();
     } catch (error) {
@@ -365,6 +392,30 @@ export function useLogCatApp() {
 
       if (event.payload.token === terminalToken.value || (isStartingTerminal && !terminalToken.value)) {
         appendTerminalChunk(event.payload.chunk);
+      }
+    });
+  }
+
+  async function ensureTransferProgressListener() {
+    if (unlistenTransferProgress) return;
+
+    unlistenTransferProgress = await listen<TransferProgressEvent>("transfer_progress", (event) => {
+      if (!event.payload || event.payload.session_id !== sessionId.value) {
+        return;
+      }
+
+      transferProgress.value = {
+        fileName: event.payload.file_name,
+        transferred: event.payload.transferred,
+        total: event.payload.total,
+      };
+
+      if (event.payload.total > 0 && event.payload.transferred >= event.payload.total) {
+        setTimeout(() => {
+          if (transferProgress.value?.fileName === event.payload.file_name) {
+            transferProgress.value = null;
+          }
+        }, 1500);
       }
     });
   }
@@ -440,7 +491,12 @@ export function useLogCatApp() {
       return;
     }
 
-    if (entry.kind === "file" && entry.is_text) {
+    if (entry.kind === "file") {
+      if (!entry.is_text) {
+        errorMsg.value = `File "${entry.name}" is not a text file and cannot be viewed.`;
+        return;
+      }
+      
       showFavorites.value = false;
 
       if (selectedFile.value === entry.path) {
@@ -655,12 +711,72 @@ export function useLogCatApp() {
     }
   }
 
+  async function uploadFiles(localPaths: string[]) {
+    if (!sessionId.value || localPaths.length === 0) return;
+
+    loading.value = true;
+    try {
+      await Promise.all(
+        localPaths.map(async (localPath) => {
+          const fileName = localPath.split(/[/\\]/).pop();
+          if (!fileName) return;
+
+          const remotePath = currentPath.value.endsWith("/")
+            ? `${currentPath.value}${fileName}`
+            : `${currentPath.value}/${fileName}`;
+
+          await invoke("upload_file", {
+            sessionId: sessionId.value,
+            localPath,
+            remotePath,
+          });
+        }),
+      );
+      await refresh({ force: true });
+    } catch (error) {
+      errorMsg.value = `Failed to upload files: ${error}`;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function downloadFile(entry: DirEntry) {
+    if (!sessionId.value) return;
+
+    try {
+      const defaultPath = entry.name;
+      const localPath = await save({
+        defaultPath,
+        title: "Save File",
+      });
+
+      if (!localPath) return;
+
+      loading.value = true;
+      await invoke("download_file", {
+        sessionId: sessionId.value,
+        remotePath: entry.path,
+        localPath,
+      });
+    } catch (error) {
+      errorMsg.value = `Failed to download file: ${error}`;
+    } finally {
+      loading.value = false;
+    }
+  }
+
   onBeforeUnmount(() => {
     if (unlistenTail) {
       unlistenTail();
     }
     if (unlistenTerminal) {
       unlistenTerminal();
+    }
+    if (unlistenDragDrop) {
+      unlistenDragDrop();
+    }
+    if (unlistenTransferProgress) {
+      unlistenTransferProgress();
     }
   });
 
@@ -696,6 +812,7 @@ export function useLogCatApp() {
     logViewer,
     terminalViewer,
     isAutoScroll,
+    transferProgress,
     currentHostFavorites,
     highlightedLines,
     openAddModal,
@@ -721,5 +838,8 @@ export function useLogCatApp() {
     clearError,
     clearContent,
     pickPrivateKeyPath,
+    uploadFiles,
+    isDraggingOverSidebar,
+    downloadFile,
   };
 }

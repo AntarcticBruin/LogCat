@@ -17,6 +17,8 @@ pub fn run() {
             ssh::stop_terminal,
             ssh::write_terminal,
             ssh::resize_terminal,
+            ssh::upload_file,
+            ssh::download_file,
             window::show_main_window,
             window::default_ssh_key_dir
         ]);
