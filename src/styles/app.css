@@ -116,14 +116,42 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
 .terminal-viewer:focus { box-shadow: inset 0 0 0 1px rgba(14, 99, 156, 0.28); }
 .terminal-viewer.inactive { background: #141414; }
 .terminal-host { position: absolute; inset: 0 0 0 12px; overflow: hidden; background: #141414; z-index: 0; }
-.terminal-viewer .xterm { height: 100% !important; }
+.terminal-viewer .xterm {
+  height: 100% !important;
+  background: #141414 !important;
+}
 .terminal-viewer .xterm-viewport,
-.terminal-viewer .xterm-screen { height: 100% !important; }
+.terminal-viewer .xterm-screen {
+  height: 100% !important;
+  background: #141414 !important;
+}
 .terminal-viewer .xterm-screen canvas { background: #141414 !important; }
 .terminal-viewer .xterm-viewport { overflow-y: auto !important; background-color: #141414 !important; }
-.terminal-viewer .xterm-screen { width: 100% !important; }
-.terminal-viewer .xterm-viewport::-webkit-scrollbar { width: 0; height: 0; }
+.terminal-viewer .xterm-viewport::-webkit-scrollbar { width: 0 !important; height: 0 !important; }
 .terminal-viewer .xterm-viewport { scrollbar-width: none; -ms-overflow-style: none; }
+.terminal-viewer .xterm-screen { width: 100% !important; }
+.terminal-viewer .xterm-scrollable-element > .scrollbar {
+  width: 8px !important;
+  right: 0 !important;
+  background: #141414 !important;
+}
+.terminal-viewer .xterm-scrollable-element > .scrollbar.vertical > .slider {
+  width: 8px !important;
+  border-radius: 999px;
+}
+.terminal-viewer .xterm-scrollable-element,
+.terminal-viewer .xterm-decoration-overview-ruler,
+.terminal-viewer .xterm-decoration-container {
+  background: #141414 !important;
+  border: 0 !important;
+}
+.terminal-viewer .xterm-scrollable-element > .shadow,
+.terminal-viewer .xterm-scrollable-element > .shadow.top,
+.terminal-viewer .xterm-scrollable-element > .shadow.left,
+.terminal-viewer .xterm-scrollable-element > .shadow.top.left,
+.terminal-viewer .xterm-scrollable-element > .shadow.top-left-corner {
+  display: none !important;
+}
 .terminal-viewer.inactive .xterm-cursor-layer,
 .terminal-viewer.inactive .xterm-cursor,
 .terminal-viewer.inactive .xterm-cursor-block,
