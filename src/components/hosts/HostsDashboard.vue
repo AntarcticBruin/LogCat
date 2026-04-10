@@ -60,7 +60,7 @@ const emit = defineEmits<{
 
       <div class="host-card add-card" @click="emit('add')">
         <div class="add-icon">+</div>
-        <div class="add-text">Add New Host</div>
+        <div class="add-text">Add Host</div>
       </div>
     </div>
   </div>

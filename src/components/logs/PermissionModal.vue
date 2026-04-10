@@ -128,7 +128,7 @@ watch(
 
         <div class="form-group">
           <label>Octal Permissions</label>
-          <input v-model="mode" placeholder="e.g. 755" maxlength="4" @keyup.enter="emit('confirm')" />
+          <input v-model="mode" placeholder="E.g. 755" maxlength="4" @keyup.enter="emit('confirm')" />
         </div>
         <div class="confirm-message">Use the checkboxes or enter a 3-digit or 4-digit octal value directly.</div>
       </div>

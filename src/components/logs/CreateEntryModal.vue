@@ -27,7 +27,7 @@ const emit = defineEmits<{
       <div class="modal-body">
         <div class="form-group">
           <label>{{ kindLabel }} Name</label>
-          <input v-model="name" :placeholder="`Enter ${kindLabel.toLowerCase()} name`" @keyup.enter="emit('confirm')" />
+          <input v-model="name" :placeholder="`Enter ${kindLabel.toLowerCase()} Name`" @keyup.enter="emit('confirm')" />
         </div>
       </div>
       <div class="modal-footer">

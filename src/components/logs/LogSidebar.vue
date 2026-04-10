@@ -153,7 +153,7 @@ onBeforeUnmount(() => {
           v-if="sessionId"
           class="icon-btn sidebar-favorites-btn"
           :class="{ active: showFavorites }"
-          :title="showFavorites ? 'Show current folder' : 'Show favorites'"
+          :title="showFavorites ? 'Show Current Folder' : 'Show Favorites'"
           @click="emit('toggle-favorites')"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="1.5">
@@ -166,7 +166,7 @@ onBeforeUnmount(() => {
 
     <div v-if="!sessionId" class="no-conn-state">
       <p>No active connection.</p>
-      <button class="btn btn-primary" @click="emit('select-hosts-tab')">Select a Host</button>
+      <button class="btn btn-primary" @click="emit('select-hosts-tab')">Select Host</button>
     </div>
 
     <div
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
       :class="{ 'dragging-over': isDraggingOver }"
     >
       <div class="path-bar">
-        <button class="icon-btn" @click="emit('up')" title="Up one level">
+        <button class="icon-btn" @click="emit('up')" title="Go Up">
           <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2">
             <polyline points="15 18 9 12 15 6"></polyline>
           </svg>
@@ -192,7 +192,7 @@ onBeforeUnmount(() => {
             <line x1="12" y1="19" x2="20" y2="19"></line>
           </svg>
         </button>
-        <button class="icon-btn" title="New" @click="openCreateMenuFromButton">
+        <button class="icon-btn" title="Create New" @click="openCreateMenuFromButton">
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
             <path d="M12 5v14"></path>
             <path d="M5 12h14"></path>
@@ -229,7 +229,7 @@ onBeforeUnmount(() => {
             </div>
             <button
               class="icon-btn favorite-toggle active"
-              title="Remove favorite"
+              title="Remove Favorite"
               @click.stop="emit('toggle-favorite', asFavoriteEntry(item))"
             >
               <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="1.5">
@@ -265,7 +265,7 @@ onBeforeUnmount(() => {
           <button
             v-if="entry.kind === 'file'"
             class="icon-btn download-btn"
-            title="Download file"
+            title="Download File"
             @click.stop="emit('download-file', entry)"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -290,7 +290,7 @@ onBeforeUnmount(() => {
           <button
             class="icon-btn favorite-toggle"
             :class="{ active: isFavorite(entry.path) }"
-            :title="isFavorite(entry.path) ? 'Remove favorite' : 'Add favorite'"
+            :title="isFavorite(entry.path) ? 'Remove Favorite' : 'Add Favorite'"
             @click.stop="emit('toggle-favorite', entry)"
           >
             <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="1.5">
@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
             class="file-context-menu-item"
             @click="handleChangeMode(contextMenu.entry)"
           >
-            Permission
+            Change Permissions
           </button>
           <button
             v-if="contextMenu.entry"

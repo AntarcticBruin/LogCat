@@ -25,8 +25,8 @@ const emit = defineEmits<{
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>name</label>
-          <input v-model="name" placeholder="Please enter the new name" @keyup.enter="emit('confirm')" />
+          <label>Name</label>
+          <input v-model="name" placeholder="Enter New Name" @keyup.enter="emit('confirm')" />
         </div>
       </div>
       <div class="modal-footer">

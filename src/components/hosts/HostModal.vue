@@ -24,7 +24,7 @@ const emit = defineEmits<{
   <div v-if="isOpen" class="modal-overlay" @click.self="emit('close')">
     <div class="modal-content">
       <div class="modal-header">
-        <h3>{{ selectedHostId ? "Edit Host" : "Add New Host" }}</h3>
+        <h3>{{ selectedHostId ? "Edit Host" : "Add Host" }}</h3>
         <button class="close-modal" @click="emit('close')">×</button>
       </div>
       <div class="modal-body">
@@ -89,7 +89,7 @@ const emit = defineEmits<{
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" @click="emit('close')">Cancel</button>
-        <button class="btn btn-primary" @click="emit('save')">Save Configuration</button>
+        <button class="btn btn-primary" @click="emit('save')">Save Host</button>
       </div>
     </div>
   </div>
