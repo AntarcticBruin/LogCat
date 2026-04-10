@@ -6,6 +6,8 @@
 
 ![log](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260410_1775808558.png)
 
+![edit](https://gitee.com/Duelist/img/raw/master/2026/04/upgit_20260410_1775808729.png)
+
 **DogShell** 是一款基于 [Tauri 2.0](https://v2.tauri.app/) 和 [Rust](https://www.rust-lang.org/) 构建的高性能、跨平台远程 SSH 终端、日志查看器与文件浏览器。
 
 它旨在解决开发者在查看大型远程服务器日志时的痛点：延迟高、大文件卡顿、以及对现代 SSH 密钥格式支持不佳。
