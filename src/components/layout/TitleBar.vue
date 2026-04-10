@@ -13,7 +13,7 @@ defineProps<{
         <path d="M4 17L10 11 4 5"></path>
         <line x1="12" y1="19" x2="20" y2="19"></line>
       </svg>
-      <span>LogCat</span>
+      <span>DogShell</span>
     </div>
     <div class="titlebar-actions">
       <div class="titlebar-button" @click="appWindow.minimize()">
