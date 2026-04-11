@@ -105,7 +105,7 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
 .favorite-meta { display: flex; flex-direction: column; min-width: 0; gap: 2px; flex: 1; }
 .favorite-path { color: var(--text-muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .favorites-empty { padding: 20px 16px; color: var(--text-muted); font-size: 12px; }
-.file-context-menu {
+.file-context-menu, .terminal-context-menu {
   position: fixed;
   min-width: 132px;
   padding: 6px;
@@ -115,7 +115,7 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
   box-shadow: 0 14px 28px rgba(0, 0, 0, 0.34);
   z-index: 1200;
 }
-.file-context-menu-item {
+.file-context-menu-item, .terminal-context-menu-item {
   width: 100%;
   border: 0;
   background: transparent;
@@ -126,7 +126,7 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
   cursor: pointer;
   font-size: 12px;
 }
-.file-context-menu-item:hover {
+.file-context-menu-item:hover, .terminal-context-menu-item:hover {
   background: #34373b;
   color: var(--text-light);
 }

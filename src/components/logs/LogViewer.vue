@@ -5,7 +5,7 @@ import "@xterm/xterm/css/xterm.css";
 import { ref, computed } from "vue";
 import { nextTick, onBeforeUnmount, onMounted, watch } from "vue";
 import type { HighlightedLine, HighlightSegment, HostSessionTab } from "../../types/app";
-import { readText } from "@tauri-apps/plugin-clipboard-manager";
+import { readText, writeText } from "@tauri-apps/plugin-clipboard-manager";
 
 const content = defineModel<string>("content", { required: true });
 const activeSessionId = defineModel<string | null>("activeSessionId", { required: true });
@@ -45,6 +45,14 @@ let resizeObserver: ResizeObserver | null = null;
 const localLogViewerRef = ref<HTMLElement | null>(null);
 const terminalContainers = new Map<string, HTMLElement>();
 const observedTerminalElements = new Set<HTMLElement>();
+
+const terminalContextMenu = ref<{
+  tabId: string;
+  type: "copy" | "paste";
+  selection: string;
+  x: number;
+  y: number;
+} | null>(null);
 
 const searchQuery = ref("");
 const filterQuery = ref("");
@@ -108,6 +116,11 @@ function closeSearchOrFilter() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (terminalContextMenu.value && e.key === "Escape") {
+    e.preventDefault();
+    terminalContextMenu.value = null;
+    return;
+  }
   if (!props.selectedFile) return;
 
   if (e.ctrlKey && e.key.toLowerCase() === 'f') {
@@ -229,8 +242,62 @@ function syncTerminalOutput() {
   }
 }
 
+const TERMINAL_CONTEXT_MENU_WIDTH = 156;
+const TERMINAL_CONTEXT_MENU_ITEM_HEIGHT = 36;
+const TERMINAL_CONTEXT_MENU_PADDING = 12;
+
+function positionTerminalContextMenu(x: number, y: number) {
+  const menuHeight = TERMINAL_CONTEXT_MENU_ITEM_HEIGHT + TERMINAL_CONTEXT_MENU_PADDING;
+  const maxX = window.innerWidth - TERMINAL_CONTEXT_MENU_WIDTH - 8;
+  const maxY = window.innerHeight - menuHeight - 8;
+
+  return {
+    x: Math.max(8, Math.min(x, maxX)),
+    y: Math.max(8, Math.min(y, maxY)),
+  };
+}
+
+function closeTerminalContextMenu() {
+  terminalContextMenu.value = null;
+}
+
+function handleGlobalClick() {
+  closeTerminalContextMenu();
+}
+
+async function handleTerminalCopy() {
+  const menu = terminalContextMenu.value;
+  if (!menu || menu.type !== "copy") return;
+  try {
+    await writeText(menu.selection);
+    const inst = terminalInstances.get(menu.tabId);
+    inst?.terminal.clearSelection();
+  } catch (error) {
+    console.error("Failed to write clipboard:", error);
+  } finally {
+    closeTerminalContextMenu();
+  }
+}
+
+async function handleTerminalPaste() {
+  const menu = terminalContextMenu.value;
+  if (!menu || menu.type !== "paste") return;
+  try {
+    const text = await readText();
+    if (text && text.length > 0) {
+      emit("write-terminal", menu.tabId, text);
+      focusTerminal(menu.tabId);
+    }
+  } catch (error) {
+    console.error("Failed to read clipboard:", error);
+  } finally {
+    closeTerminalContextMenu();
+  }
+}
+
 async function handleTerminalContextMenu(event: MouseEvent) {
   event.preventDefault();
+  event.stopPropagation();
 
   if (props.selectedFile || !activeTerminalTabId.value) return;
   const tabId = activeTerminalTabId.value;
@@ -239,19 +306,14 @@ async function handleTerminalContextMenu(event: MouseEvent) {
 
   const inst = terminalInstances.get(tabId);
   const selection = inst?.terminal.getSelection() ?? "";
-  if (selection.trim()) {
-    emit("write-terminal", tabId, selection);
-    return;
-  }
-
-  try {
-    const text = await readText();
-    if (text) {
-      emit("write-terminal", tabId, text);
-    }
-  } catch (error) {
-    console.error("Failed to read clipboard:", error);
-  }
+  const type = selection.trim() ? "copy" : "paste";
+  const pos = positionTerminalContextMenu(event.clientX, event.clientY);
+  terminalContextMenu.value = {
+    tabId,
+    type,
+    selection,
+    ...pos,
+  };
 }
 
 watch(
@@ -467,6 +529,8 @@ watch(
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("click", handleGlobalClick);
+  window.addEventListener("blur", handleGlobalClick);
 
   resizeObserver = new ResizeObserver(() => {
     if (activeTerminalTabId.value) {
@@ -482,6 +546,8 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener("click", handleGlobalClick);
+  window.removeEventListener("blur", handleGlobalClick);
   resizeObserver?.disconnect();
   for (const tabId of terminalInstances.keys()) {
     destroyTerminal(tabId);
@@ -580,6 +646,30 @@ onBeforeUnmount(() => {
       >
         <div :ref="(el) => setTerminalContainer(tab.id, el)" :data-tab-id="tab.id" class="terminal-host"></div>
       </div>
+      
+      <teleport to="body">
+        <div
+          v-if="terminalContextMenu"
+          class="terminal-context-menu"
+          :style="{ left: `${terminalContextMenu.x}px`, top: `${terminalContextMenu.y}px` }"
+          @click.stop
+        >
+          <button
+            v-if="terminalContextMenu.type === 'copy'"
+            class="terminal-context-menu-item"
+            @click="handleTerminalCopy"
+          >
+            Copy
+          </button>
+          <button
+            v-else
+            class="terminal-context-menu-item"
+            @click="handleTerminalPaste"
+          >
+            Paste
+          </button>
+        </div>
+      </teleport>
 
       <div v-if="terminalEmptyState()" class="terminal-empty-state">
         <div class="terminal-empty-card">
