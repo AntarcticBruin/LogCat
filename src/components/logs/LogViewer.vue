@@ -37,6 +37,7 @@ type TerminalInstance = {
   terminal: Terminal;
   fitAddon: FitAddon;
   disposeDataHandler: { dispose(): void } | null;
+  disposeContextMenuHandler: (() => void) | null;
   lastRenderedLength: number;
 };
 
@@ -46,13 +47,25 @@ const localLogViewerRef = ref<HTMLElement | null>(null);
 const terminalContainers = new Map<string, HTMLElement>();
 const observedTerminalElements = new Set<HTMLElement>();
 
-const terminalContextMenu = ref<{
-  tabId: string;
-  type: "copy" | "paste";
-  selection: string;
-  x: number;
-  y: number;
-} | null>(null);
+type TerminalContextMenu =
+  | {
+      tabId: string;
+      type: "copy";
+      selection: string;
+      x: number;
+      y: number;
+    }
+  | {
+      tabId: string;
+      type: "paste";
+      selection: string;
+      x: number;
+      y: number;
+      pasteText: string;
+      pasteEnabled: boolean;
+    };
+
+const terminalContextMenu = ref<TerminalContextMenu | null>(null);
 
 const logContextMenu = ref<{
   selection: string;
@@ -294,8 +307,9 @@ async function handleTerminalCopy() {
 async function handleTerminalPaste() {
   const menu = terminalContextMenu.value;
   if (!menu || menu.type !== "paste") return;
+  if (!menu.pasteEnabled) return;
   try {
-    const text = await readText();
+    const text = menu.pasteText || await readText();
     if (text && text.length > 0) {
       emit("write-terminal", menu.tabId, text);
       focusTerminal(menu.tabId);
@@ -307,25 +321,54 @@ async function handleTerminalPaste() {
   }
 }
 
-async function handleTerminalContextMenu(event: MouseEvent) {
+async function openTerminalContextMenuForTab(event: MouseEvent, tabId: string) {
   event.preventDefault();
   event.stopPropagation();
 
-  if (props.selectedFile || !activeTerminalTabId.value) return;
-  const tabId = activeTerminalTabId.value;
+  closeTerminalContextMenu();
+
+  if (props.selectedFile) return;
   const tab = terminalTabs.value.find(t => t.id === tabId);
   if (!tab || !tab.token) return;
 
   const inst = terminalInstances.get(tabId);
   const selection = inst?.terminal.getSelection() ?? "";
-  const type = selection.trim() ? "copy" : "paste";
   const pos = positionTerminalContextMenu(event.clientX, event.clientY);
+  if (selection.trim()) {
+    terminalContextMenu.value = {
+      tabId,
+      type: "copy",
+      selection,
+      ...pos,
+    };
+    return;
+  }
+
+  let pasteText = "";
+  let pasteEnabled = false;
+  try {
+    pasteText = await readText();
+    pasteEnabled = pasteText.length > 0;
+  } catch (error) {
+    console.error("Failed to read clipboard:", error);
+    return;
+  }
+
+  if (!pasteEnabled) return;
+
   terminalContextMenu.value = {
     tabId,
-    type,
+    type: "paste",
     selection,
+    pasteText,
+    pasteEnabled,
     ...pos,
   };
+}
+
+async function handleTerminalContextMenu(event: MouseEvent) {
+  if (!activeTerminalTabId.value) return;
+  await openTerminalContextMenuForTab(event, activeTerminalTabId.value);
 }
 
 async function handleLogContextMenu(event: MouseEvent) {
@@ -451,6 +494,13 @@ function createTerminal(tabId: string, element: HTMLElement) {
   const fitAddon = new FitAddon();
   terminal.loadAddon(fitAddon);
   terminal.open(element);
+  const contextMenuHandler = (e: MouseEvent) => {
+    void openTerminalContextMenuForTab(e, tabId);
+  };
+  terminal.element?.addEventListener("contextmenu", contextMenuHandler, true);
+  const disposeContextMenuHandler = () => {
+    terminal.element?.removeEventListener("contextmenu", contextMenuHandler, true);
+  };
 
   const disposeDataHandler = terminal.onData((data) => {
     if (!props.selectedFile) {
@@ -462,6 +512,7 @@ function createTerminal(tabId: string, element: HTMLElement) {
     terminal,
     fitAddon,
     disposeDataHandler,
+    disposeContextMenuHandler,
     lastRenderedLength: 0,
   });
 
@@ -493,6 +544,7 @@ function destroyTerminal(tabId: string) {
   const inst = terminalInstances.get(tabId);
   if (inst) {
     inst.disposeDataHandler?.dispose();
+    inst.disposeContextMenuHandler?.();
     inst.terminal.dispose();
     terminalInstances.delete(tabId);
   }
@@ -704,6 +756,7 @@ onBeforeUnmount(() => {
           <button
             v-else
             class="terminal-context-menu-item"
+            :disabled="terminalContextMenu.type === 'paste' && !terminalContextMenu.pasteEnabled"
             @click="handleTerminalPaste"
           >
             Paste
