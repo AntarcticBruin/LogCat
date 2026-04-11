@@ -229,15 +229,25 @@ function syncTerminalOutput() {
   }
 }
 
-async function handleTerminalContextMenu() {
+async function handleTerminalContextMenu(event: MouseEvent) {
+  event.preventDefault();
+
   if (props.selectedFile || !activeTerminalTabId.value) return;
-  const tab = terminalTabs.value.find(t => t.id === activeTerminalTabId.value);
+  const tabId = activeTerminalTabId.value;
+  const tab = terminalTabs.value.find(t => t.id === tabId);
   if (!tab || !tab.token) return;
-  
+
+  const inst = terminalInstances.get(tabId);
+  const selection = inst?.terminal.getSelection() ?? "";
+  if (selection.trim()) {
+    emit("write-terminal", tabId, selection);
+    return;
+  }
+
   try {
     const text = await readText();
     if (text) {
-      emit("write-terminal", activeTerminalTabId.value, text);
+      emit("write-terminal", tabId, text);
     }
   } catch (error) {
     console.error("Failed to read clipboard:", error);
