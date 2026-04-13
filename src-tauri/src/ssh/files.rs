@@ -140,6 +140,7 @@ pub async fn list_directory(
             is_text,
             mode: stat.permissions.map(|perm| perm & 0o7777),
             size: size_val,
+            mtime: stat.mtime.map(u64::from),
         });
     }
 

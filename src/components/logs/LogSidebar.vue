@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import type { DirEntry, FavoriteItem } from "../../types/app";
+
+type SortKey = "name" | "size" | "mtime";
 
 const props = defineProps<{
   sessionId: string | null;
@@ -42,9 +44,24 @@ const asFavoriteEntry = (item: FavoriteItem): DirEntry => ({
 });
 
 const isDraggingOver = defineModel<boolean>("isDraggingOver", { default: false });
+const sidebarRef = ref<HTMLElement | null>(null);
+const searchQuery = ref("");
+const showSearch = ref(false);
+const searchInputRef = ref<HTMLInputElement | null>(null);
+const isSidebarPointerInside = ref(false);
+const sortKey = ref<SortKey>("name");
+const sortMenu = ref<{
+  x: number;
+  y: number;
+} | null>(null);
 
 const contextMenu = ref<{
   entry: DirEntry | null;
+  x: number;
+  y: number;
+} | null>(null);
+const hoverTooltip = ref<{
+  text: string;
   x: number;
   y: number;
 } | null>(null);
@@ -52,6 +69,56 @@ const contextMenu = ref<{
 const CONTEXT_MENU_WIDTH = 168;
 const CONTEXT_MENU_ITEM_HEIGHT = 36;
 const CONTEXT_MENU_PADDING = 12;
+const HOVER_TOOLTIP_OFFSET = 14;
+const HOVER_TOOLTIP_MAX_WIDTH = 420;
+
+const filteredEntries = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  const filtered = !query
+    ? props.entries
+    : props.entries.filter((entry) =>
+        entry.name.toLowerCase().includes(query) || entry.path.toLowerCase().includes(query),
+      );
+
+  return [...filtered].sort(compareEntries);
+});
+
+const filteredFavorites = computed(() => {
+  const query = searchQuery.value.trim().toLowerCase();
+  const filtered = !query
+    ? props.currentHostFavorites
+    : props.currentHostFavorites.filter((item) =>
+        item.name.toLowerCase().includes(query) || item.path.toLowerCase().includes(query),
+      );
+
+  return [...filtered].sort((left, right) => left.name.toLowerCase().localeCompare(right.name.toLowerCase()));
+});
+
+function compareEntryKind(left: DirEntry, right: DirEntry) {
+  const order = { dir: 0, file: 1, symlink: 2, other: 3 } as const;
+  return order[left.kind] - order[right.kind];
+}
+
+function compareEntries(left: DirEntry, right: DirEntry) {
+  const kindOrder = compareEntryKind(left, right);
+  if (kindOrder !== 0) {
+    return kindOrder;
+  }
+
+  if (sortKey.value === "size") {
+    const sizeDiff = (right.size ?? -1) - (left.size ?? -1);
+    if (sizeDiff !== 0) {
+      return sizeDiff;
+    }
+  } else if (sortKey.value === "mtime") {
+    const mtimeDiff = (right.mtime ?? 0) - (left.mtime ?? 0);
+    if (mtimeDiff !== 0) {
+      return mtimeDiff;
+    }
+  }
+
+  return left.name.toLowerCase().localeCompare(right.name.toLowerCase());
+}
 
 function getContextMenuHeight(entry: DirEntry | null) {
   const itemCount = entry ? (entry.kind === "file" && entry.is_text ? 4 : 3) : 2;
@@ -74,21 +141,78 @@ function closeContextMenu() {
   contextMenu.value = null;
 }
 
+function closeSortMenu() {
+  sortMenu.value = null;
+}
+
+function updateHoverTooltipPosition(event: MouseEvent) {
+  if (!hoverTooltip.value) {
+    return;
+  }
+
+  const maxX = window.innerWidth - HOVER_TOOLTIP_MAX_WIDTH - 12;
+  const maxY = window.innerHeight - 48;
+
+  hoverTooltip.value = {
+    ...hoverTooltip.value,
+    x: Math.max(8, Math.min(event.clientX + HOVER_TOOLTIP_OFFSET, maxX)),
+    y: Math.max(8, Math.min(event.clientY + HOVER_TOOLTIP_OFFSET, maxY)),
+  };
+}
+
+function showHoverTooltip(event: MouseEvent, text: string) {
+  const target = event.currentTarget as HTMLElement | null;
+  if (!target || target.scrollWidth <= target.clientWidth || !text) {
+    hoverTooltip.value = null;
+    return;
+  }
+
+  hoverTooltip.value = { text, x: 0, y: 0 };
+  updateHoverTooltipPosition(event);
+}
+
+function hideHoverTooltip() {
+  hoverTooltip.value = null;
+}
+
 function openContextMenu(event: MouseEvent, entry: DirEntry) {
   event.preventDefault();
   event.stopPropagation();
+  closeSortMenu();
   contextMenu.value = positionContextMenu(event.clientX, event.clientY, entry);
 }
 
 function openCreateContextMenu(event: MouseEvent) {
   event.preventDefault();
+  closeSortMenu();
   contextMenu.value = positionContextMenu(event.clientX, event.clientY, null);
 }
 
 function openCreateMenuFromButton(event: MouseEvent) {
   event.stopPropagation();
+  closeSortMenu();
   const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
   contextMenu.value = positionContextMenu(rect.left, rect.bottom + 6, null);
+}
+
+function toggleSortMenu(event: MouseEvent) {
+  event.stopPropagation();
+  closeContextMenu();
+  if (sortMenu.value) {
+    closeSortMenu();
+    return;
+  }
+
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  sortMenu.value = {
+    x: Math.max(8, Math.min(rect.left, window.innerWidth - 176)),
+    y: Math.max(8, Math.min(rect.bottom + 6, window.innerHeight - 140)),
+  };
+}
+
+function setSort(nextSortKey: SortKey) {
+  sortKey.value = nextSortKey;
+  closeSortMenu();
 }
 
 function handleGoHome() {
@@ -97,6 +221,21 @@ function handleGoHome() {
   }
   emit("update:currentPath", "/");
   emit("refresh");
+}
+
+function isSidebarActive() {
+  const activeElement = document.activeElement;
+  return isSidebarPointerInside.value || (!!activeElement && !!sidebarRef.value?.contains(activeElement));
+}
+
+function openSearch() {
+  showSearch.value = true;
+  void nextTick(() => searchInputRef.value?.focus());
+}
+
+function closeSearch() {
+  showSearch.value = false;
+  searchQuery.value = "";
 }
 
 function handleEdit(entry: DirEntry) {
@@ -131,11 +270,32 @@ function handleCreateDir() {
 
 function handleGlobalClick() {
   closeContextMenu();
+  closeSortMenu();
+  hideHoverTooltip();
 }
 
 function handleGlobalKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) {
+    return;
+  }
+
+  if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "f" && isSidebarActive()) {
+    event.preventDefault();
+    event.stopPropagation();
+    openSearch();
+    return;
+  }
+
   if (event.key === "Escape") {
+    if (showSearch.value && isSidebarActive()) {
+      event.preventDefault();
+      closeSearch();
+      return;
+    }
+
     closeContextMenu();
+    closeSortMenu();
+    hideHoverTooltip();
   }
 }
 
@@ -153,10 +313,39 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <aside class="sidebar">
+  <aside
+    ref="sidebarRef"
+    class="sidebar"
+    @mouseenter="isSidebarPointerInside = true"
+    @mouseleave="isSidebarPointerInside = false"
+  >
     <div class="sidebar-header">
       <span class="brand">File Explorer</span>
       <div class="sidebar-actions">
+        <button
+          v-if="sessionId"
+          class="icon-btn sidebar-refresh-btn"
+          title="Refresh"
+          @click="emit('refresh')"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 11a8 8 0 1 1-2.34-5.66"></path>
+            <path d="M20 4v7h-7"></path>
+          </svg>
+        </button>
+        <button
+          v-if="sessionId"
+          class="icon-btn sidebar-sort-btn"
+          :class="{ active: sortMenu !== null }"
+          :title="`Sort by ${sortKey === 'name' ? 'Name' : sortKey === 'size' ? 'Size' : 'Modified Time'}`"
+          @click="toggleSortMenu"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 6h10"></path>
+            <path d="M7 12h7"></path>
+            <path d="M7 18h4"></path>
+          </svg>
+        </button>
         <button
           v-if="sessionId"
           class="icon-btn sidebar-favorites-btn"
@@ -213,14 +402,26 @@ onBeforeUnmount(() => {
         </button>
       </div>
 
+      <div v-if="showSearch" class="sidebar-search-row">
+        <div class="search-bar sidebar-search-bar">
+          <input
+            ref="searchInputRef"
+            v-model="searchQuery"
+            placeholder="Search files"
+            @keydown.esc.prevent="closeSearch"
+          />
+          <button class="icon-btn" title="Close Search" @click="closeSearch">×</button>
+        </div>
+      </div>
+
       <div v-if="showFavorites" class="favorites-panel">
         <div class="favorites-panel-header">
           <span>Favorites</span>
-          <span class="favorites-count">{{ currentHostFavorites.length }}</span>
+          <span class="favorites-count">{{ filteredFavorites.length }}</span>
         </div>
-        <div v-if="currentHostFavorites.length" class="file-list">
+        <div v-if="filteredFavorites.length" class="file-list">
           <div
-            v-for="item in currentHostFavorites"
+            v-for="item in filteredFavorites"
             :key="item.id"
             class="file-item favorite-item"
             :class="{ selected: selectedFile === item.path }"
@@ -237,8 +438,18 @@ onBeforeUnmount(() => {
               <span v-if="item.is_symlink" class="symlink-badge">↗</span>
             </span>
             <div class="favorite-meta">
-              <span class="file-name">{{ item.name }}</span>
-              <span class="favorite-path">{{ item.path }}</span>
+              <span
+                class="file-name file-label-trigger"
+                @mouseenter="showHoverTooltip($event, item.name)"
+                @mousemove="updateHoverTooltipPosition"
+                @mouseleave="hideHoverTooltip"
+              >{{ item.name }}</span>
+              <span
+                class="favorite-path file-label-trigger"
+                @mouseenter="showHoverTooltip($event, item.path)"
+                @mousemove="updateHoverTooltipPosition"
+                @mouseleave="hideHoverTooltip"
+              >{{ item.path }}</span>
             </div>
             <button
               class="icon-btn favorite-toggle active"
@@ -251,12 +462,14 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </div>
-        <div v-else class="favorites-empty">No favorites on this host yet.</div>
+        <div v-else class="favorites-empty">
+          {{ searchQuery ? "No matching favorites." : "No favorites on this host yet." }}
+        </div>
       </div>
 
       <div v-else class="file-list" @contextmenu="openCreateContextMenu">
         <div
-          v-for="entry in entries"
+          v-for="entry in filteredEntries"
           :key="entry.path"
           class="file-item"
           :class="{ selected: selectedFile === entry.path }"
@@ -273,7 +486,12 @@ onBeforeUnmount(() => {
             </svg>
             <span v-if="entry.is_symlink" class="symlink-badge">↗</span>
           </span>
-          <span class="file-name">{{ entry.name }}</span>
+          <span
+            class="file-name file-label-trigger"
+            @mouseenter="showHoverTooltip($event, entry.name)"
+            @mousemove="updateHoverTooltipPosition"
+            @mouseleave="hideHoverTooltip"
+          >{{ entry.name }}</span>
           
           <button
             v-if="entry.kind === 'file'"
@@ -311,9 +529,47 @@ onBeforeUnmount(() => {
             </svg>
           </button>
         </div>
+        <div v-if="!filteredEntries.length" class="favorites-empty">
+          {{ searchQuery ? "No matching files." : "This folder is empty." }}
+        </div>
       </div>
 
       <teleport to="body">
+        <div
+          v-if="sortMenu"
+          class="file-context-menu sort-menu"
+          :style="{ left: `${sortMenu.x}px`, top: `${sortMenu.y}px` }"
+          @click.stop
+        >
+          <button
+            class="file-context-menu-item"
+            :class="{ active: sortKey === 'name' }"
+            @click="setSort('name')"
+          >
+            Name
+          </button>
+          <button
+            class="file-context-menu-item"
+            :class="{ active: sortKey === 'size' }"
+            @click="setSort('size')"
+          >
+            Size
+          </button>
+          <button
+            class="file-context-menu-item"
+            :class="{ active: sortKey === 'mtime' }"
+            @click="setSort('mtime')"
+          >
+            Modified Time
+          </button>
+        </div>
+        <div
+          v-if="hoverTooltip"
+          class="app-hover-tooltip"
+          :style="{ left: `${hoverTooltip.x}px`, top: `${hoverTooltip.y}px` }"
+        >
+          {{ hoverTooltip.text }}
+        </div>
         <div
           v-if="contextMenu"
           class="file-context-menu"

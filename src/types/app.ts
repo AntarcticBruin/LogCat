@@ -38,6 +38,7 @@ export type DirEntry = {
   is_text: boolean;
   mode?: number | null;
   size?: number | null;
+  mtime?: number | null;
 };
 
 export type FavoriteItem = {

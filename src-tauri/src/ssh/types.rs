@@ -42,6 +42,7 @@ pub struct DirEntry {
     pub is_text: bool,
     pub mode: Option<u32>,
     pub size: Option<u64>,
+    pub mtime: Option<u64>,
 }
 
 #[derive(Serialize, Clone)]

@@ -135,6 +135,10 @@ function closeSearchOrFilter() {
 }
 
 function handleKeydown(e: KeyboardEvent) {
+  if (e.defaultPrevented) {
+    return;
+  }
+
   if (terminalContextMenu.value && e.key === "Escape") {
     e.preventDefault();
     terminalContextMenu.value = null;
