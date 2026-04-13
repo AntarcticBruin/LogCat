@@ -70,8 +70,60 @@ input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-so
 .add-icon { font-size: 32px; color: var(--text-muted); margin-bottom: 8px; }
 .add-text { font-size: 12px; color: var(--text-muted); }
 
-.logs-container { display: flex; flex: 1; overflow: hidden; height: 100%; min-height: 0; }
-.sidebar { width: 260px; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+.logs-container { display: flex; flex: 1; overflow: hidden; height: 100%; min-height: 0; position: relative; }
+.sidebar-pane {
+  width: 260px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  display: flex;
+  min-height: 0;
+}
+.sidebar-pane.collapsed { width: 0; }
+.sidebar-floating-toggle {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--sidebar-pane-width) - 20px);
+  transform: translateY(-50%);
+  width: 34px;
+  height: 44px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  z-index: 50;
+  opacity: 1;
+}
+.sidebar-floating-toggle.icon-btn:hover { background: transparent; }
+.sidebar-floating-toggle.icon-btn:active { transform: translateY(-50%); }
+.sidebar-toggle-visual {
+  width: 20px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(37, 37, 38, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  box-shadow:
+    0 10px 18px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 0, 0, 0.18);
+  backdrop-filter: blur(6px);
+  color: rgba(255, 255, 255, 0.72);
+  opacity: 0.92;
+}
+.sidebar-floating-toggle:hover .sidebar-toggle-visual {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.92);
+  border-color: rgba(121, 192, 255, 0.18);
+  box-shadow:
+    0 12px 20px rgba(0, 0, 0, 0.34),
+    0 0 0 3px rgba(14, 99, 156, 0.14);
+}
+.sidebar-floating-toggle:active .sidebar-toggle-visual { transform: scale(0.985); }
+.sidebar-floating-toggle.collapsed svg { transform: translateX(5px); }
+.sidebar { width: 260px; height: 100%; flex: 1; min-height: 0; background: var(--bg-sidebar); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
 .sidebar-header { padding: 5.5px 8px 5.5px 16px; min-height: 40px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 600; letter-spacing: 0.2px; }
 .sidebar-actions { display: flex; align-items: center; gap: 8px; }
 .sidebar-favorites-btn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; }
